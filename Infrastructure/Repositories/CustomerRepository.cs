@@ -26,9 +26,9 @@ namespace Persistence.Repositories
             _context.Customers.Remove(customer);
         }
 
-        public Task<Customer> FindByIdAsync(CustomerId id)
+        public async Task<Customer> FindByIdAsync(CustomerId id)
         {
-            return _context.Customers.SingleOrDefaultAsync(c => c.Id == id);  
+            return await _context.Customers.FirstOrDefaultAsync(c => c.Id == id);
         }
 
         public void Update(Customer customer)
