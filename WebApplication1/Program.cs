@@ -1,7 +1,6 @@
 using Application;
 using Microsoft.EntityFrameworkCore;
 using Persistence;
-using Presentation;
 using Serilog;
 using FluentValidation.AspNetCore;
 using Application.Customers.Creat;
@@ -22,8 +21,7 @@ builder.Services.AddSwaggerGen();
 
 
 builder.Services.AddApplication()
-.AddPersistence(builder.Configuration)
-.AddPresentation();
+.AddPersistence(builder.Configuration);
 
 builder.Host.UseSerilog((context, configuration) =>
     configuration.ReadFrom.Configuration(context.Configuration));
