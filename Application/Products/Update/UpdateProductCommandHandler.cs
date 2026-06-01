@@ -6,13 +6,18 @@ namespace Application.Products.Update;
 
 internal sealed class UpdateProductCommandHandler : IRequestHandler<UpdateProductCommand>
 {
+    private readonly UpdateProductValidator _validator;
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateProductCommandHandler(IProductRepository productRepository, IUnitOfWork unitOfWork)
+    public UpdateProductCommandHandler(
+        IProductRepository productRepository,
+        IUnitOfWork unitOfWork,
+        UpdateProductValidator validator)
     {
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
+        _validator = validator;
     }
 
     public async Task Handle(UpdateProductCommand request, CancellationToken cancellationToken)
@@ -26,10 +31,16 @@ internal sealed class UpdateProductCommandHandler : IRequestHandler<UpdateProduc
         product.Update(
             request.Name,
             request.Description,
-            request.Price,
             request.InternalCost,
+            request.Price,
             request.Category,
             request.StockQuantity);
+
+        var validationResult = _validator.Validate(product);
+        if (!validationResult.IsValid)
+        {
+            throw new ProductNotValidExeption(string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage)));
+        }
 
         _productRepository.Update(product);
 

@@ -30,16 +30,21 @@ internal sealed class CreateProductCommandHandler : IRequestHandler<CreateProduc
             request.Category,
             request.StockQuantity);
 
-        var result = _validator.Validate(product);
-        if (!result.IsValid)
-        {
-            throw new ProductNotValidExeption(string.Join("; ", result.Errors.Select(e => e.ErrorMessage)));
-        }
+        ThrowIfInvalid(product);
 
         _productRepository.Add(product);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return product.Id.Value;
+    }
+
+    private void ThrowIfInvalid(Product product)
+    {
+        var result = _validator.Validate(product);
+        if (!result.IsValid)
+        {
+            throw new ProductNotValidExeption(string.Join("; ", result.Errors.Select(e => e.ErrorMessage)));
+        }
     }
 }

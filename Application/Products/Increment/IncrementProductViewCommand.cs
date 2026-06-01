@@ -26,7 +26,6 @@ internal sealed class IncrementProductViewCommandHandler : IRequestHandler<Incre
         }
 
         product.IncrementViewCount();
-        _productRepository.Update(product);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

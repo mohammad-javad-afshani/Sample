@@ -39,17 +39,19 @@ internal sealed class ProductRepository : IProductRepository
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.Products.AsQueryable();
+        var query = _context.Products.AsNoTracking().AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(category))
+        var normalizedCategory = category?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedCategory))
         {
-            query = query.Where(p => p.Category == category);
+            query = query.Where(p => p.Category == normalizedCategory);
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
 
         var items = await query
             .OrderBy(p => p.Name)
+            .ThenBy(p => p.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);

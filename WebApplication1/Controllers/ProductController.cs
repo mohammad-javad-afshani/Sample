@@ -13,6 +13,9 @@ namespace WebApplication1.Controllers;
 [Route("[controller]")]
 public class ProductController : ControllerBase
 {
+    private const string AdminApiKeyConfigPath = "ProductApi:AdminApiKey";
+    private const string DiscountRateConfigPath = "ProductApi:DiscountRate";
+
     private readonly IConfiguration _configuration;
     private readonly ILogger<ProductController> _logger;
 
@@ -23,6 +26,8 @@ public class ProductController : ControllerBase
     }
 
     [HttpPost("Create")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> CreateProduct(CreateProductCommand command, ISender sender)
     {
         if (!IsAuthorized())
@@ -35,6 +40,7 @@ public class ProductController : ControllerBase
     }
 
     [HttpGet("Get/{id:guid}")]
+    [ProducesResponseType(typeof(ProductResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<ProductResponse>> GetProduct(Guid id, ISender sender)
     {
         var product = await sender.Send(new GetProductQuery(new ProductId(id)));
@@ -42,6 +48,7 @@ public class ProductController : ControllerBase
     }
 
     [HttpPost("View/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> IncrementViewCount(Guid id, ISender sender)
     {
         await sender.Send(new IncrementProductViewCommand(new ProductId(id)));
@@ -49,10 +56,11 @@ public class ProductController : ControllerBase
     }
 
     [HttpGet("List")]
+    [ProducesResponseType(typeof(PagedProductResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedProductResponse>> ListProducts(
         [FromQuery] string? category,
-        [FromQuery] int page,
-        [FromQuery] int pageSize,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
         ISender sender)
     {
         var products = await sender.Send(new ListProductsQuery(category, page, pageSize));
@@ -60,6 +68,8 @@ public class ProductController : ControllerBase
     }
 
     [HttpPut("Update/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpdateProduct(Guid id, [FromBody] UpdateProductRequest request, ISender sender)
     {
         if (!IsAuthorized())
@@ -82,6 +92,8 @@ public class ProductController : ControllerBase
     }
 
     [HttpDelete("Delete/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> DeleteProduct(Guid id, ISender sender)
     {
         if (!IsAuthorized())
@@ -94,17 +106,19 @@ public class ProductController : ControllerBase
     }
 
     [HttpGet("Discount/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> GetDiscountedPrice(Guid id, ISender sender)
     {
         var product = await sender.Send(new GetProductQuery(new ProductId(id)));
-        var discountRate = _configuration.GetValue<decimal>("ProductApi:DiscountRate", 0.73m);
+        var discountRate = _configuration.GetValue<decimal>(DiscountRateConfigPath, 0.73m);
 
         if (discountRate is <= 0 or > 1)
         {
             return BadRequest("Invalid discount rate configuration.");
         }
 
-        var discountedPrice = product.Price * discountRate;
+        var discountedPrice = Math.Round(product.Price * discountRate, 2, MidpointRounding.AwayFromZero);
 
         _logger.LogInformation("Calculated discounted price for product {ProductId}", id);
 
@@ -113,7 +127,7 @@ public class ProductController : ControllerBase
 
     private bool IsAuthorized()
     {
-        var configuredKey = _configuration["ProductApi:AdminApiKey"];
+        var configuredKey = _configuration[AdminApiKeyConfigPath];
         if (string.IsNullOrEmpty(configuredKey))
         {
             return false;

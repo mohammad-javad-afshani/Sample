@@ -27,11 +27,11 @@ public class Product
 
     public void Update(string name, string description, decimal price, decimal internalCost, string category, int stockQuantity)
     {
-        Name = name;
-        Description = description;
+        Name = name.Trim();
+        Description = description.Trim();
         Price = price;
         InternalCost = internalCost;
-        Category = category;
+        Category = category.Trim();
         StockQuantity = stockQuantity;
     }
 
