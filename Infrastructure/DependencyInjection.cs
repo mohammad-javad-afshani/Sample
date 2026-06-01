@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Domain.Customers;
 using Persistence.Repositories;
 using Domain.Addresses;
+using Domain.Products;
 
 namespace Persistence
 
@@ -28,6 +29,8 @@ namespace Persistence
             services.AddScoped<ICustomerRepository, CustomerRepository>();
 
             services.AddScoped<IAddressRepository, AddressRepository>();
+
+            services.AddScoped<IProductRepository, ProductRepository>();
 
             return services;
         }
