@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Products.Get;
 
-internal sealed class GetProductQueryHandler : IRequestHandler<GetProductQuery, ProductResponse?>
+internal sealed class GetProductQueryHandler : IRequestHandler<GetProductQuery, ProductResponse>
 {
     private readonly IApplicationDbContext _context;
 
@@ -14,7 +14,7 @@ internal sealed class GetProductQueryHandler : IRequestHandler<GetProductQuery, 
         _context = context;
     }
 
-    public async Task<ProductResponse?> Handle(GetProductQuery request, CancellationToken cancellationToken)
+    public async Task<ProductResponse> Handle(GetProductQuery request, CancellationToken cancellationToken)
     {
         var product = await _context.Products
             .Where(p => p.Id == request.ProductId)
@@ -23,11 +23,15 @@ internal sealed class GetProductQueryHandler : IRequestHandler<GetProductQuery, 
                 p.Name,
                 p.Description,
                 p.Price,
-                p.InternalCost,
                 p.Category,
                 p.StockQuantity,
                 p.ViewCount))
             .FirstOrDefaultAsync(cancellationToken);
+
+        if (product is null)
+        {
+            throw new ProductNotFoundExeption(request.ProductId);
+        }
 
         return product;
     }

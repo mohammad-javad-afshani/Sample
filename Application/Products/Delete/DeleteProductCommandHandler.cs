@@ -17,20 +17,13 @@ internal sealed class DeleteProductCommandHandler : IRequestHandler<DeleteProduc
 
     public async Task Handle(DeleteProductCommand request, CancellationToken cancellationToken)
     {
-        try
+        var product = await _productRepository.FindByIdAsync(request.ProductId, cancellationToken);
+        if (product is null)
         {
-            var product = await _productRepository.FindByIdAsync(request.ProductId);
-            if (product == null)
-            {
-                return;
-            }
+            throw new ProductNotFoundExeption(request.ProductId);
+        }
 
-            _productRepository.Delete(product);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-        }
-        catch (Exception)
-        {
-            return;
-        }
+        _productRepository.Delete(product);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

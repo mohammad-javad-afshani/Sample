@@ -2,7 +2,7 @@ using Application.Data;
 using Domain.Products;
 using MediatR;
 
-namespace Application.Products.Get;
+namespace Application.Products.Increment;
 
 public record IncrementProductViewCommand(ProductId ProductId) : IRequest;
 
@@ -19,10 +19,10 @@ internal sealed class IncrementProductViewCommandHandler : IRequestHandler<Incre
 
     public async Task Handle(IncrementProductViewCommand request, CancellationToken cancellationToken)
     {
-        var product = await _productRepository.FindByIdAsync(request.ProductId);
-        if (product == null)
+        var product = await _productRepository.FindByIdAsync(request.ProductId, cancellationToken);
+        if (product is null)
         {
-            return;
+            throw new ProductNotFoundExeption(request.ProductId);
         }
 
         product.IncrementViewCount();

@@ -40,7 +40,7 @@ namespace WebApplication1.Controllers
                    request.BankAccountNumber,
                    request.Addresses);
 
-            await sender.Send(request);
+            await sender.Send(command);
 
             return Ok();
         }

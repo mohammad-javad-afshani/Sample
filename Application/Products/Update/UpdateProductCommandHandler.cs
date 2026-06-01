@@ -17,8 +17,8 @@ internal sealed class UpdateProductCommandHandler : IRequestHandler<UpdateProduc
 
     public async Task Handle(UpdateProductCommand request, CancellationToken cancellationToken)
     {
-        var product = await _productRepository.FindByIdAsync(request.ProductId);
-        if (product == null)
+        var product = await _productRepository.FindByIdAsync(request.ProductId, cancellationToken);
+        if (product is null)
         {
             throw new ProductNotFoundExeption(request.ProductId);
         }
@@ -33,6 +33,6 @@ internal sealed class UpdateProductCommandHandler : IRequestHandler<UpdateProduc
 
         _productRepository.Update(product);
 
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

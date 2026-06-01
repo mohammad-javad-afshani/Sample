@@ -8,7 +8,7 @@ internal sealed class ProductRepository : IProductRepository
 {
     private readonly IApplicationDbContext _context;
 
-    public ProductRepository(ApplicationDbContext context)
+    public ProductRepository(IApplicationDbContext context)
     {
         _context = context;
     }
@@ -28,21 +28,32 @@ internal sealed class ProductRepository : IProductRepository
         _context.Products.Remove(product);
     }
 
-    public async Task<Product?> FindByIdAsync(ProductId id)
+    public async Task<Product?> FindByIdAsync(ProductId id, CancellationToken cancellationToken = default)
     {
-        return await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
+        return await _context.Products.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
 
-    public async Task<List<Product>> FindByCategoryAsync(string category)
+    public async Task<(List<Product> Items, int TotalCount)> FindPagedAsync(
+        string? category,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
     {
-        var sql = $"SELECT * FROM Products WHERE Category = '{category}'";
-        return await _context.Products
-            .FromSqlRaw(sql)
-            .ToListAsync();
-    }
+        var query = _context.Products.AsQueryable();
 
-    public async Task<List<Product>> GetAllAsync()
-    {
-        return await _context.Products.ToListAsync();
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            query = query.Where(p => p.Category == category);
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderBy(p => p.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
     }
 }

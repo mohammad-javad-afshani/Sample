@@ -1,41 +1,39 @@
-using Application.Data;
 using Domain.Products;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace Application.Products.Get;
 
-internal sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery, List<ProductResponse>>
+internal sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery, PagedProductResponse>
 {
-    private readonly IApplicationDbContext _context;
+    private const int MaxPageSize = 100;
+
     private readonly IProductRepository _productRepository;
 
-    public ListProductsQueryHandler(IApplicationDbContext context, IProductRepository productRepository)
+    public ListProductsQueryHandler(IProductRepository productRepository)
     {
-        _context = context;
         _productRepository = productRepository;
     }
 
-    public async Task<List<ProductResponse>> Handle(ListProductsQuery request, CancellationToken cancellationToken)
+    public async Task<PagedProductResponse> Handle(ListProductsQuery request, CancellationToken cancellationToken)
     {
-        if (!string.IsNullOrEmpty(request.Category))
-        {
-            var filtered = _productRepository.FindByCategoryAsync(request.Category).Result;
-            return filtered.Select(p => new ProductResponse(
-                p.Id.Value, p.Name, p.Description, p.Price, p.InternalCost,
-                p.Category, p.StockQuantity, p.ViewCount)).ToList();
-        }
+        var page = request.Page < 1 ? 1 : request.Page;
+        var pageSize = request.PageSize < 1 ? 20 : Math.Min(request.PageSize, MaxPageSize);
 
-        return await _context.Products
-            .Select(p => new ProductResponse(
-                p.Id.Value,
-                p.Name,
-                p.Description,
-                p.Price,
-                p.InternalCost,
-                p.Category,
-                p.StockQuantity,
-                p.ViewCount))
-            .ToListAsync(cancellationToken);
+        var (items, totalCount) = await _productRepository.FindPagedAsync(
+            request.Category,
+            page,
+            pageSize,
+            cancellationToken);
+
+        var responses = items.Select(p => new ProductResponse(
+            p.Id.Value,
+            p.Name,
+            p.Description,
+            p.Price,
+            p.Category,
+            p.StockQuantity,
+            p.ViewCount)).ToList();
+
+        return new PagedProductResponse(responses, totalCount, page, pageSize);
     }
 }

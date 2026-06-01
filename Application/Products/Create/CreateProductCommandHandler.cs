@@ -6,13 +6,18 @@ namespace Application.Products.Create;
 
 internal sealed class CreateProductCommandHandler : IRequestHandler<CreateProductCommand, Guid>
 {
+    private readonly CreateProductValidator _validator;
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public CreateProductCommandHandler(IProductRepository productRepository, IUnitOfWork unitOfWork)
+    public CreateProductCommandHandler(
+        IProductRepository productRepository,
+        IUnitOfWork unitOfWork,
+        CreateProductValidator validator)
     {
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
+        _validator = validator;
     }
 
     public async Task<Guid> Handle(CreateProductCommand request, CancellationToken cancellationToken)
@@ -24,6 +29,12 @@ internal sealed class CreateProductCommandHandler : IRequestHandler<CreateProduc
             request.InternalCost,
             request.Category,
             request.StockQuantity);
+
+        var result = _validator.Validate(product);
+        if (!result.IsValid)
+        {
+            throw new ProductNotValidExeption(string.Join("; ", result.Errors.Select(e => e.ErrorMessage)));
+        }
 
         _productRepository.Add(product);
 

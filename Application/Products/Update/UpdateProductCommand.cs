@@ -18,4 +18,4 @@ public record UpdateProductRequest(
     decimal Price,
     decimal InternalCost,
     string Category,
-    int StockQuantity) : IRequest;
+    int StockQuantity);
