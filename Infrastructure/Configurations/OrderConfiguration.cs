@@ -20,6 +20,8 @@ internal class OrderConfiguration : IEntityTypeConfiguration<Order>
             value => value == null ? null : new CustomerId(value.Value));
 
         builder.Property(o => o.Status).HasConversion<int>();
+        builder.Property(o => o.CouponDiscount).HasPrecision(18, 2);
+        builder.Property(o => o.AppliedCouponCode).HasMaxLength(50);
         builder.OwnsMany(o => o.Lines, lines =>
         {
             lines.WithOwner().HasForeignKey("OrderId");

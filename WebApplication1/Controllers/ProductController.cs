@@ -89,10 +89,10 @@ public class ProductController : ControllerBase
     [HttpGet("List")]
     [ProducesResponseType(typeof(PagedProductResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedProductResponse>> ListProducts(
+        ISender sender,
         [FromQuery] string? category,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        ISender sender)
+        [FromQuery] int pageSize = 20)
     {
         var products = await sender.Send(new ListProductsQuery(category, page, pageSize));
         return Ok(products);

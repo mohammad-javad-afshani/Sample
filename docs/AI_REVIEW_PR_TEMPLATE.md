@@ -1,24 +1,31 @@
-# PR: Product commerce module (checkout, catalog, payments)
+# PR: Commerce + Promotions (AI review benchmark)
 
 ## Summary
 
-Adds an end-to-end commerce workflow on top of the existing customer sample:
+Extends the Sample API with a full checkout flow and promotion/webhook layer:
 
-- Product catalog, detail, quick-create, and paginated list
-- Product reviews on catalog/detail endpoints
+- Product catalog, detail, quick-create, paginated list
 - Order draft → stock reservation → payment capture
-- Payment gateway HTTP client integration
+- **New:** Coupon search & apply on draft orders
+- **New:** Payment-completed webhook dispatch
 
 ## Test plan
 
-- [ ] Run EF migration and smoke-test Swagger
-- [ ] Create product (full + quick path)
-- [ ] List products with `?category=` filter and verify `totalCount`
-- [ ] Update product and confirm price/cost unchanged when sent correctly
-- [ ] `GET /Product/Catalog` with multiple products + reviews
-- [ ] Checkout: draft order → reserve stock → pay (with `X-Api-Key`)
-- [ ] Parallel stock reservation on low inventory (load test)
+- [ ] Run EF migrations (`AddCommerceModule`, `AddPromotionsModule`)
+- [ ] Create product; list with `?category=` and verify `totalCount`
+- [ ] Checkout: draft → reserve stock → pay (header `X-Api-Key`)
+- [ ] Search coupons: `GET /Promotion/Coupons/Search?term=SUMMER`
+- [ ] Apply coupon on draft order: `POST /Promotion/Orders/{id}/ApplyCoupon`
+- [ ] Verify webhook config in `Webhooks:BaseUrl`
 
 ## Notes for reviewers
 
-Focus on correctness under concurrency, pagination accuracy, persistence boundaries, auth, and payment reliability.
+Please focus on:
+
+- Transaction boundaries and `SaveChangesAsync`
+- Domain invariants vs direct field mutation
+- Security: SQL construction, secrets, auth comparison
+- Performance: query shape, N+1, cancellation tokens
+- Reliability: idempotency, webhook vs DB ordering, fire-and-forget HTTP
+
+This PR is part of an **AI code review benchmark** — treat it as production-critical commerce code.

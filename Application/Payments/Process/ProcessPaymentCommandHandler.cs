@@ -1,4 +1,5 @@
 using Application.Data;
+using Application.Notifications;
 using Domain.Orders;
 using Domain.Payments;
 using MediatR;
@@ -11,17 +12,20 @@ internal sealed class ProcessPaymentCommandHandler : IRequestHandler<ProcessPaym
     private readonly IOrderRepository _orderRepository;
     private readonly IPaymentRepository _paymentRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ISender _sender;
 
     public ProcessPaymentCommandHandler(
         IPaymentGatewayClient paymentGateway,
         IOrderRepository orderRepository,
         IPaymentRepository paymentRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ISender sender)
     {
         _paymentGateway = paymentGateway;
         _orderRepository = orderRepository;
         _paymentRepository = paymentRepository;
         _unitOfWork = unitOfWork;
+        _sender = sender;
     }
 
     public async Task<Guid> Handle(ProcessPaymentCommand request, CancellationToken cancellationToken)
@@ -57,6 +61,11 @@ internal sealed class ProcessPaymentCommandHandler : IRequestHandler<ProcessPaym
 
         _paymentRepository.Update(payment);
         _orderRepository.Update(order);
+
+        await _sender.Send(
+            new NotifyPaymentCompletedCommand(order.Id, payment.Id, order.PayableAmount),
+            cancellationToken);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return payment.Id.Value;

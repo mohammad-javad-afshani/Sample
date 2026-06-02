@@ -5,10 +5,12 @@ using Microsoft.EntityFrameworkCore;
 using Domain.Customers;
 using Persistence.Repositories;
 using Domain.Addresses;
+using Application.Notifications;
 using Application.Payments;
 using Domain.Orders;
 using Domain.Payments;
 using Domain.Products;
+using Domain.Promotions;
 using Persistence.ExternalServices;
 
 namespace Persistence
@@ -37,11 +39,18 @@ namespace Persistence
             services.AddScoped<IProductRepository, ProductRepository>();
             services.AddScoped<IOrderRepository, OrderRepository>();
             services.AddScoped<IPaymentRepository, PaymentRepository>();
+            services.AddScoped<ICouponRepository, CouponRepository>();
 
             services.AddHttpClient<IPaymentGatewayClient, PaymentGatewayClient>(client =>
             {
                 client.BaseAddress = new Uri(configuration["PaymentGateway:BaseUrl"] ?? "https://payments.example.local/");
                 client.Timeout = TimeSpan.FromSeconds(configuration.GetValue<int>("PaymentGateway:TimeoutSeconds", 30));
+            });
+
+            services.AddHttpClient<IWebhookNotificationClient, WebhookNotificationClient>(client =>
+            {
+                client.BaseAddress = new Uri(configuration["Webhooks:BaseUrl"] ?? "https://hooks.example.local/");
+                client.Timeout = TimeSpan.FromSeconds(configuration.GetValue<int>("Webhooks:TimeoutSeconds", 10));
             });
 
             return services;

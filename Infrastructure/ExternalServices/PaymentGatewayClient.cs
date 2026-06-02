@@ -1,4 +1,5 @@
 using Application.Payments;
+using Microsoft.Extensions.Logging;
 
 namespace Persistence.ExternalServices;
 

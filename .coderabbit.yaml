@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integration/schema.v2.json
+language: en-US
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - master
+  path_filters:
+    - "!**/*.md"
+    - "!**/.idea/**"
+  path_instructions:
+    - path: "**/*"
+      instructions: |
+        Focus on correctness, security (SQL injection, secrets, auth timing),
+        performance (N+1, pagination), DDD invariants, concurrency, and
+        distributed-systems reliability (idempotency, outbox, webhook ordering).
+        Flag missing SaveChangesAsync, domain method bypass, and fire-and-forget HTTP.
+chat:
+  auto_reply: false

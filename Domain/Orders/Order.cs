@@ -9,6 +9,9 @@ public class Order
     public OrderStatus Status { get; private set; }
     public List<OrderLine> Lines { get; private set; } = new();
     public decimal TotalAmount => Lines.Sum(l => l.LineTotal);
+    public decimal CouponDiscount { get; private set; }
+    public decimal PayableAmount => TotalAmount - CouponDiscount;
+    public string? AppliedCouponCode { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
 
     private Order() { }
@@ -34,5 +37,11 @@ public class Order
     public void MarkPaid()
     {
         Status = OrderStatus.Paid;
+    }
+
+    public void ApplyCoupon(string code, decimal discountAmount)
+    {
+        AppliedCouponCode = code;
+        CouponDiscount = discountAmount;
     }
 }
