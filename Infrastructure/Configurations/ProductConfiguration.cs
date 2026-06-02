@@ -19,6 +19,7 @@ internal class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(p => p.Category).HasMaxLength(100).IsRequired();
         builder.Property(p => p.Price).HasPrecision(18, 2);
         builder.Property(p => p.InternalCost).HasPrecision(18, 2);
+        builder.Property(p => p.RowVersion).IsRowVersion();
         builder.Property(p => p.ViewCount).HasDefaultValue(0);
         builder.Property(p => p.StockQuantity).HasDefaultValue(0);
 

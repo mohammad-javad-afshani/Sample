@@ -2,6 +2,7 @@ using Application.Products.Create;
 using Application.Products.Delete;
 using Application.Products.Get;
 using Application.Products.Increment;
+using Application.Products.QuickCreate;
 using Application.Products.Update;
 using Domain.Products;
 using MediatR;
@@ -39,6 +40,20 @@ public class ProductController : ControllerBase
         return Ok(new { Id = id });
     }
 
+    [HttpPost("QuickCreate")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> QuickCreateProduct(QuickCreateProductCommand command, ISender sender)
+    {
+        if (!IsAuthorized())
+        {
+            return Unauthorized();
+        }
+
+        var id = await sender.Send(command);
+        return Ok(new { Id = id });
+    }
+
     [HttpGet("Get/{id:guid}")]
     [ProducesResponseType(typeof(ProductResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<ProductResponse>> GetProduct(Guid id, ISender sender)
@@ -53,6 +68,22 @@ public class ProductController : ControllerBase
     {
         await sender.Send(new IncrementProductViewCommand(new ProductId(id)));
         return Ok();
+    }
+
+    [HttpGet("Detail/{id:guid}")]
+    [ProducesResponseType(typeof(ProductDetailResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ProductDetailResponse>> GetProductDetail(Guid id, ISender sender)
+    {
+        var detail = await sender.Send(new GetProductDetailQuery(new ProductId(id)));
+        return Ok(detail);
+    }
+
+    [HttpGet("Catalog")]
+    [ProducesResponseType(typeof(IReadOnlyList<ProductCatalogItemResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<ProductCatalogItemResponse>>> GetProductCatalog(ISender sender)
+    {
+        var catalog = await sender.Send(new GetProductCatalogQuery());
+        return Ok(catalog);
     }
 
     [HttpGet("List")]
@@ -138,6 +169,6 @@ public class ProductController : ControllerBase
             return false;
         }
 
-        return string.Equals(configuredKey, apiKey.ToString(), StringComparison.Ordinal);
+        return apiKey.ToString() == configuredKey;
     }
 }

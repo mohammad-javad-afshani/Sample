@@ -47,7 +47,7 @@ internal sealed class ProductRepository : IProductRepository
             query = query.Where(p => p.Category == normalizedCategory);
         }
 
-        var totalCount = await query.CountAsync(cancellationToken);
+        var totalCount = await _context.Products.CountAsync(cancellationToken);
 
         var items = await query
             .OrderBy(p => p.Name)

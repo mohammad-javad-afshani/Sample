@@ -5,7 +5,11 @@ using Microsoft.EntityFrameworkCore;
 using Domain.Customers;
 using Persistence.Repositories;
 using Domain.Addresses;
+using Application.Payments;
+using Domain.Orders;
+using Domain.Payments;
 using Domain.Products;
+using Persistence.ExternalServices;
 
 namespace Persistence
 
@@ -31,6 +35,14 @@ namespace Persistence
             services.AddScoped<IAddressRepository, AddressRepository>();
 
             services.AddScoped<IProductRepository, ProductRepository>();
+            services.AddScoped<IOrderRepository, OrderRepository>();
+            services.AddScoped<IPaymentRepository, PaymentRepository>();
+
+            services.AddHttpClient<IPaymentGatewayClient, PaymentGatewayClient>(client =>
+            {
+                client.BaseAddress = new Uri(configuration["PaymentGateway:BaseUrl"] ?? "https://payments.example.local/");
+                client.Timeout = TimeSpan.FromSeconds(configuration.GetValue<int>("PaymentGateway:TimeoutSeconds", 30));
+            });
 
             return services;
         }
