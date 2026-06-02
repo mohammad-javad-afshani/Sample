@@ -7,10 +7,12 @@ using Persistence.Repositories;
 using Domain.Addresses;
 using Application.Notifications;
 using Application.Payments;
+using Application.Refunds.Process;
 using Domain.Orders;
 using Domain.Payments;
 using Domain.Products;
 using Domain.Promotions;
+using Domain.Refunds;
 using Persistence.ExternalServices;
 
 namespace Persistence
@@ -40,6 +42,7 @@ namespace Persistence
             services.AddScoped<IOrderRepository, OrderRepository>();
             services.AddScoped<IPaymentRepository, PaymentRepository>();
             services.AddScoped<ICouponRepository, CouponRepository>();
+            services.AddScoped<IRefundRepository, RefundRepository>();
 
             services.AddHttpClient<IPaymentGatewayClient, PaymentGatewayClient>(client =>
             {
@@ -51,6 +54,12 @@ namespace Persistence
             {
                 client.BaseAddress = new Uri(configuration["Webhooks:BaseUrl"] ?? "https://hooks.example.local/");
                 client.Timeout = TimeSpan.FromSeconds(configuration.GetValue<int>("Webhooks:TimeoutSeconds", 10));
+            });
+
+            services.AddHttpClient<IRefundGatewayClient, RefundGatewayClient>(client =>
+            {
+                client.BaseAddress = new Uri(configuration["RefundGateway:BaseUrl"] ?? "https://refunds.example.local/");
+                client.Timeout = TimeSpan.FromSeconds(configuration.GetValue<int>("RefundGateway:TimeoutSeconds", 15));
             });
 
             return services;
