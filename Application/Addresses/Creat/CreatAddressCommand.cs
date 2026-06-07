@@ -9,4 +9,10 @@ namespace Application.Addresses.Creat
         string Street) : IRequest;
 
 
+    public record CreatAddressCommandd(
+        string CountryTitle,
+        string CityTitle, 
+        string PostalCode, 
+        string Street) : IRequest;
+
 }
