@@ -1,0 +1,65 @@
+{
+  "runId": "R4-THREE-WAY-20250608",
+  "branch": "test-code-review-3",
+  "tools": ["greptile", "cursor", "coderabbit"],
+  "badScenarioCount": 26,
+  "goodControlCount": 8,
+  "weightedMetrics": {
+    "truePositiveRate": 0.25,
+    "severityDetection": 0.20,
+    "architecturalFindings": 0.15,
+    "securityFindings": 0.10,
+    "contextAwareness": 0.10,
+    "precision": 0.10,
+    "actionability": 0.05,
+    "noiseReduction": 0.05
+  },
+  "categories": {
+    "A_functional": ["R4-01", "R4-06", "R4-12"],
+    "B_concurrency": ["R4-14", "R4-17"],
+    "C_security": ["R4-02", "R4-03", "R4-04", "R4-05", "R4-27"],
+    "D_performance": ["R4-11", "R4-12", "R4-13", "R4-14", "R4-15", "R4-16", "R4-29"],
+    "E_architecture": ["R4-20"],
+    "F_maintainability": ["R4-09", "R4-10", "R4-21", "R4-22", "R4-24"],
+    "G_testQuality": ["R4-25", "R4-26"]
+  },
+  "scenarios": {
+    "R4-01": { "bad": "Application/Vendors/Update/UpdateVendorCommandHandler.cs", "good": "Application/Vendors/Create/CreateVendorCommandHandler.cs" },
+    "R4-02": { "bad": "Infrastructure/Repositories/VendorRepository.cs SearchUnsafeAsync" },
+    "R4-03": { "bad": "Application/Vendors/Export/ExportVendorsQueryHandler.cs" },
+    "R4-04": { "bad": "WebApplication1/Controllers/VendorController.cs Export action" },
+    "R4-05": { "bad": "ExportVendorsQuery IncludeInternalFields default true" },
+    "R4-06": { "bad": "Application/Vendors/Lookup/GetVendorByCodeQueryHandler.cs" },
+    "R4-07": { "bad": "Infrastructure/ExternalServices/AnalyticsInsightClient.cs" },
+    "R4-08": { "bad": "AnalyticsInsightClient catch block" },
+    "R4-09": { "bad": "ExportVendorsQuery boolean flags" },
+    "R4-10": { "bad": "GetUserOrderStatsQuery naming" },
+    "R4-11": { "bad": "GetUserOrderStatsQueryHandler.cs" },
+    "R4-12": { "bad": "ExportVendorsQueryHandler loads all" },
+    "R4-13": { "bad": "SearchUnsafeAsync SELECT *" },
+    "R4-14": { "bad": "SearchVendorsQueryHandler.cs" },
+    "R4-15": { "bad": "GenerateVendorReportCommandHandler IMemoryCache Set" },
+    "R4-16": { "bad": "cache key report" },
+    "R4-17": { "bad": "SharedReportCache static Dictionary" },
+    "R4-18": { "bad": "AnalyticsInsightClient while true retry" },
+    "R4-19": { "bad": "no circuit breaker on analytics client" },
+    "R4-20": { "bad": "GenerateVendorReportCommandHandler SRP" },
+    "R4-21": { "bad": "duplicate switch methods" },
+    "R4-22": { "bad": "UnusedLegacyFormat" },
+    "R4-23": { "bad": "LogError on success" },
+    "R4-24": { "bad": "UpdateContact in report handler" },
+    "R4-25": { "bad": "Test/Vendors/VendorPlaceholderTests.cs" },
+    "R4-26": { "good": "Test/Vendors/VendorCreateValidationTests.cs" },
+    "R4-27": { "bad": "anonymous Search/Export/Metrics endpoints" },
+    "R4-29": { "bad": "metrics nested loop" }
+  },
+  "postReview": {
+    "prUrl": null,
+    "commit": null,
+    "scores": {
+      "greptile": {},
+      "cursor": {},
+      "coderabbit": {}
+    }
+  }
+}

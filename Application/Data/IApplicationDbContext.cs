@@ -6,6 +6,7 @@ using Domain.Products;
 using Domain.Promotions;
 using Domain.Refunds;
 using Domain.Reviews;
+using Domain.Vendors;
 using Microsoft.EntityFrameworkCore;
 
 namespace Application.Data
@@ -20,6 +21,7 @@ namespace Application.Data
         DbSet<Payment> Payments { get; set; }
         DbSet<Coupon> Coupons { get; set; }
         DbSet<Refund> Refunds { get; set; }
+        DbSet<Vendor> Vendors { get; set; }
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }

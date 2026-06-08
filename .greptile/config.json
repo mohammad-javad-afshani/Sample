@@ -1,0 +1,98 @@
+{
+  "strictness": 1,
+  "commentTypes": ["logic", "syntax", "info"],
+  "triggerOnUpdates": true,
+  "fixWithAI": true,
+  "ignorePatterns": "**/bin/**\n**/obj/**\n**/.idea/**\n**/Migrations/*Designer.cs\n**/*.generated.*",
+  "summarySection": { "included": true, "collapsible": false, "defaultOpen": true },
+  "issuesTableSection": { "included": true, "collapsible": true, "defaultOpen": true },
+  "confidenceScoreSection": { "included": true, "collapsible": false, "defaultOpen": true },
+  "sequenceDiagramSection": { "included": true, "collapsible": true, "defaultOpen": false },
+  "instructions": "This is a .NET 7 CQRS e-commerce + vendor analytics sample. Review for security, correctness, performance, and architecture. Compare similar handlers in the same PR — flag the weaker path when one validates/paginates/authenticates and another does not. See docs/REVIEW_PROJECT_CONTEXT.md.",
+  "rules": [
+    {
+      "id": "sql-injection",
+      "rule": "Flag SQL injection: FromSqlRaw/ExecuteSqlRaw with string interpolation or concatenated user input. Require parameterized queries or EF LINQ.",
+      "scope": ["Infrastructure/Repositories/**", "Application/**"],
+      "severity": "high"
+    },
+    {
+      "id": "missing-savechanges",
+      "rule": "Flag handlers that call repository Add/Update without IUnitOfWork.SaveChangesAsync before returning success to the client.",
+      "scope": ["Application/**"],
+      "severity": "high"
+    },
+    {
+      "id": "auth-sensitive-endpoints",
+      "rule": "Flag endpoints or handlers exposing bulk financial/PII data (exports, lists of refunds/vendors) without ApiKeyAuth or equivalent authorization.",
+      "scope": ["WebApplication1/Controllers/**", "Application/**"],
+      "severity": "high"
+    },
+    {
+      "id": "pii-logs",
+      "rule": "Flag logging of tax IDs, payment/refund amounts, internal notes, or API keys at Information level or above.",
+      "scope": ["Application/**", "Infrastructure/ExternalServices/**"],
+      "severity": "high"
+    },
+    {
+      "id": "domain-bypass",
+      "rule": "Flag direct mutation of domain fields that have domain methods (e.g. StockQuantity instead of ReserveStock/AdjustStock).",
+      "scope": ["Application/**"],
+      "severity": "high"
+    },
+    {
+      "id": "n-plus-one",
+      "rule": "Flag N+1 query patterns: await inside foreach over collections loaded from DB.",
+      "scope": ["Application/**"],
+      "severity": "medium"
+    },
+    {
+      "id": "sync-over-async",
+      "rule": "Flag Task.Run with GetResult/GetAwaiter().GetResult() or blocking on async repository calls.",
+      "scope": ["Application/**"],
+      "severity": "medium"
+    },
+    {
+      "id": "unbounded-data",
+      "rule": "Flag loading all rows (ToListAsync on full table) for API responses without pagination or reasonable caps.",
+      "scope": ["Application/**"],
+      "severity": "medium"
+    },
+    {
+      "id": "cache-ttl",
+      "rule": "Flag IMemoryCache.Set without expiration, static mutable caches, or cache keys missing entity identifiers.",
+      "scope": ["Application/**"],
+      "severity": "medium"
+    },
+    {
+      "id": "resilience-retry",
+      "rule": "Flag unbounded retry loops, empty catch blocks on external gateway calls, and webhooks dispatched before SaveChangesAsync.",
+      "scope": ["Application/**", "Infrastructure/ExternalServices/**"],
+      "severity": "high"
+    },
+    {
+      "id": "return-null",
+      "rule": "Flag returning null for missing entities instead of typed NotFound/domain exceptions.",
+      "scope": ["Application/**"],
+      "severity": "medium"
+    },
+    {
+      "id": "validation-gap",
+      "rule": "When Create/Update handlers exist in the same module, flag Update paths missing FluentValidation if Create validates inputs.",
+      "scope": ["Application/**"],
+      "severity": "medium"
+    },
+    {
+      "id": "srp-god-handler",
+      "rule": "Flag command handlers mixing unrelated side effects (file write + notification + DB + cache) in one Handle method.",
+      "scope": ["Application/**"],
+      "severity": "medium"
+    },
+    {
+      "id": "test-placeholder",
+      "rule": "Flag unit tests that use Assert.True(true) or never assert the behavior under test.",
+      "scope": ["Test/**"],
+      "severity": "medium"
+    }
+  ]
+}

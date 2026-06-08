@@ -11,15 +11,64 @@ reviews:
     drafts: false
     base_branches:
       - master
+      - test-code-review
+      - test-code-review-2
+      - test-code-review-3
   path_filters:
     - "!**/*.md"
     - "!**/.idea/**"
+    - "!**/bin/**"
+    - "!**/obj/**"
+    - "!**/Migrations/*Designer.cs"
   path_instructions:
+    - path: "Application/**/*.cs"
+      instructions: |
+        .NET CQRS handlers (MediatR). Priority checks:
+        - FluentValidation on commands; flag missing validation when sibling handlers validate
+        - IUnitOfWork.SaveChangesAsync after Add/Update
+        - Domain methods vs direct property mutation
+        - N+1 queries in loops; sync-over-async (Task.Run, .Result)
+        - Return typed exceptions, not null
+        - No boolean flag parameters on commands
+        - SRP: one handler should not write files, send email, and update DB
+        Compare weak vs strong patterns in the same PR — flag the weak path only.
+    - path: "Application/Vendors/**/*.cs"
+      instructions: |
+        Vendor analytics module. Pay special attention to:
+        - SearchUnsafeAsync / SQL injection
+        - Export without auth vs Create with auth
+        - Export logs with TaxId/InternalNotes
+        - GetUserOrderStats misleading name + N+1
+        - Report handler cache (TTL, static dictionary, key collision)
+        - AnalyticsInsightClient retry loop and generic exceptions
+    - path: "Infrastructure/Repositories/**/*.cs"
+      instructions: |
+        Flag FromSqlRaw/ExecuteSqlRaw with interpolated user input.
+        Flag totalCount ignoring active filters in paged queries.
+        Prefer EF LINQ with parameterized filters.
+    - path: "Infrastructure/ExternalServices/**/*.cs"
+      instructions: |
+        Flag hardcoded secrets, fire-and-forget HTTP, HMAC over ToString() instead of JSON body.
+        Flag unbounded retry loops and empty catch blocks.
+        Flag logging of financial amounts or PII.
+        Verify HttpClient timeout is respected (configured in DI).
+    - path: "WebApplication1/Controllers/**/*.cs"
+      instructions: |
+        Flag missing ApiKeyAuth on sensitive GET endpoints (export, bulk list).
+        Flag non-constant-time API key comparison (must use ApiKeyAuth helper).
+        Verify auth consistency across actions in the same controller.
+    - path: "Domain/**/*.cs"
+      instructions: |
+        Domain must stay free of infrastructure. Flag missing invariant enforcement
+        when application layer bypasses domain methods (StockQuantity, etc.).
+    - path: "Test/**/*.cs"
+      instructions: |
+        Flag placeholder tests (Assert.True(true), no behavior assertion).
+        Require validation tests for new FluentValidation rules.
     - path: "**/*"
       instructions: |
-        Focus on correctness, security (SQL injection, secrets, auth timing),
-        performance (N+1, pagination), DDD invariants, concurrency, and
-        distributed-systems reliability (idempotency, outbox, webhook ordering).
-        Flag missing SaveChangesAsync, domain method bypass, and fire-and-forget HTTP.
+        Project: .NET 7 e-commerce sample. Read AGENTS.md and docs/REVIEW_PROJECT_CONTEXT.md.
+        Focus: security > correctness > performance > maintainability.
+        Provide actionable fixes. Avoid style nits on unchanged legacy code.
 chat:
   auto_reply: false
