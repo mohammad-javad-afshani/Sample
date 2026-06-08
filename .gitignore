@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# AI benchmark answer key (local scoring only — do not push)
+docs/internal/

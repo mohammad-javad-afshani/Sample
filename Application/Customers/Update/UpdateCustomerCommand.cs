@@ -27,6 +27,6 @@ namespace Application.Customers.Update
       string Email,
       string PhoneNumber,
       string BankAccountNumber,
-      List<Address> Addresses) : IRequest;
+      List<Address> Addresses);
 
 }
