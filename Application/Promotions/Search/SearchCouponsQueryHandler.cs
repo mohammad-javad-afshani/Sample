@@ -12,20 +12,13 @@ internal sealed class SearchCouponsQueryHandler : IRequestHandler<SearchCouponsQ
         _couponRepository = couponRepository;
     }
 
-    public Task<IReadOnlyList<CouponSummaryResponse>> Handle(
+    public async Task<IReadOnlyList<CouponSummaryResponse>> Handle(
         SearchCouponsQuery request,
         CancellationToken cancellationToken)
     {
-        var coupons = Task.Run(
-                () => _couponRepository
-                    .SearchAsync(request.Term, CancellationToken.None)
-                    .GetAwaiter()
-                    .GetResult(),
-                CancellationToken.None)
-            .GetAwaiter()
-            .GetResult();
+        var coupons = await _couponRepository.SearchAsync(request.Term, cancellationToken);
 
-        IReadOnlyList<CouponSummaryResponse> mapped = coupons
+        return coupons
             .Select(c => new CouponSummaryResponse(
                 c.Id.Value,
                 c.Code,
@@ -33,7 +26,5 @@ internal sealed class SearchCouponsQueryHandler : IRequestHandler<SearchCouponsQ
                 c.UsageCount,
                 c.MaxUsage))
             .ToList();
-
-        return Task.FromResult(mapped);
     }
 }

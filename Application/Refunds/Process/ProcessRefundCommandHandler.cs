@@ -35,6 +35,7 @@ internal sealed class ProcessRefundCommandHandler : IRequestHandler<ProcessRefun
 
         refund.MarkProcessing();
         _refundRepository.Update(refund);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         try
         {
@@ -47,7 +48,10 @@ internal sealed class ProcessRefundCommandHandler : IRequestHandler<ProcessRefun
         }
         catch (Exception)
         {
-            return;
+            refund.MarkFailed();
+            _refundRepository.Update(refund);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            throw;
         }
 
         _refundRepository.Update(refund);

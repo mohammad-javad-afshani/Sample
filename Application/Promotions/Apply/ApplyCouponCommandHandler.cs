@@ -45,9 +45,7 @@ internal sealed class ApplyCouponCommandHandler : IRequestHandler<ApplyCouponCom
             throw new CouponExhaustedException(request.CouponCode);
         }
 
-        var baseDiscount = coupon.CalculateDiscount(order.TotalAmount);
-        var stackedDiscount = coupon.CalculateDiscount(order.TotalAmount - baseDiscount);
-        var totalDiscount = baseDiscount + stackedDiscount;
+        var totalDiscount = coupon.CalculateDiscount(order.TotalAmount);
 
         order.ApplyCoupon(coupon.Code, totalDiscount);
         coupon.RecordRedemption();

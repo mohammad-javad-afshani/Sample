@@ -29,8 +29,8 @@ internal sealed class CouponRepository : ICouponRepository
         var pattern = term.Trim();
 
         return await _context.Coupons
-            .FromSqlRaw($"SELECT * FROM Coupons WHERE Code LIKE '%{pattern}%' AND IsActive = 1")
             .AsNoTracking()
+            .Where(c => c.IsActive && EF.Functions.Like(c.Code, $"%{pattern}%"))
             .ToListAsync(cancellationToken);
     }
 

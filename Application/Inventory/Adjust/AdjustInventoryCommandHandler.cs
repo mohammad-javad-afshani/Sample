@@ -23,7 +23,7 @@ internal sealed class AdjustInventoryCommandHandler : IRequestHandler<AdjustInve
             throw new ProductNotFoundExeption(request.ProductId);
         }
 
-        product.StockQuantity = product.StockQuantity + request.Delta;
+        product.AdjustStock(request.Delta);
         _productRepository.Update(product);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

@@ -31,8 +31,8 @@ internal sealed class UpdateProductCommandHandler : IRequestHandler<UpdateProduc
         product.Update(
             request.Name,
             request.Description,
-            request.InternalCost,
             request.Price,
+            request.InternalCost,
             request.Category,
             request.StockQuantity);
 

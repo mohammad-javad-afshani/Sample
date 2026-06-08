@@ -1,4 +1,5 @@
 using Application.Data;
+using Domain.Products;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,28 +23,33 @@ internal sealed class GetProductCatalogQueryHandler : IRequestHandler<GetProduct
             .OrderBy(p => p.Name)
             .ToListAsync(cancellationToken);
 
-        var catalog = new List<ProductCatalogItemResponse>();
+        var productIds = products.Select(p => p.Id).ToList();
 
-        foreach (var product in products)
-        {
-            var reviews = await _context.Reviews
-                .AsNoTracking()
-                .Where(r => r.ProductId == product.Id)
-                .Select(r => new ReviewSummaryResponse(
+        var reviewsByProduct = await _context.Reviews
+            .AsNoTracking()
+            .Where(r => productIds.Contains(r.ProductId))
+            .Select(r => new
+            {
+                r.ProductId,
+                Review = new ReviewSummaryResponse(
                     r.Id.Value,
                     r.Author,
                     r.Rating,
                     r.Comment,
-                    r.CreatedAtUtc))
-                .ToListAsync(cancellationToken);
+                    r.CreatedAtUtc)
+            })
+            .ToListAsync(cancellationToken);
 
-            catalog.Add(new ProductCatalogItemResponse(
+        var lookup = reviewsByProduct
+            .GroupBy(x => x.ProductId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<ReviewSummaryResponse>)g.Select(x => x.Review).ToList());
+
+        return products
+            .Select(product => new ProductCatalogItemResponse(
                 product.Id.Value,
                 product.Name,
                 product.Price,
-                reviews));
-        }
-
-        return catalog;
+                lookup.TryGetValue(product.Id, out var reviews) ? reviews : Array.Empty<ReviewSummaryResponse>()))
+            .ToList();
     }
 }

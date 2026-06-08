@@ -47,21 +47,7 @@ public class PromotionController : ControllerBase
         return Ok(result);
     }
 
-    private bool IsAuthorized()
-    {
-        var configuredKey = _configuration["ProductApi:AdminApiKey"];
-        if (string.IsNullOrEmpty(configuredKey))
-        {
-            return false;
-        }
-
-        if (!Request.Headers.TryGetValue("X-Api-Key", out var apiKey))
-        {
-            return false;
-        }
-
-        return apiKey.ToString() == configuredKey;
-    }
+    private bool IsAuthorized() => ApiKeyAuth.IsAuthorized(Request, _configuration);
 }
 
 public record ApplyCouponRequest(string CouponCode);

@@ -3,7 +3,8 @@ namespace Application.Payments;
 public sealed record PaymentRequest(
     Guid OrderId,
     decimal Amount,
-    string Currency);
+    string Currency,
+    string? IdempotencyKey = null);
 
 public sealed record PaymentResult(string ExternalReference, bool Succeeded);
 

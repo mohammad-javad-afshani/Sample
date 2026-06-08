@@ -25,6 +25,11 @@ public class Coupon
 
     public void RecordRedemption()
     {
+        if (!HasRemainingUses())
+        {
+            throw new CouponExhaustedException(Code);
+        }
+
         UsageCount++;
     }
 

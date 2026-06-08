@@ -23,8 +23,14 @@ public class RefundController : ControllerBase
 
     [HttpGet("List")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ListRefunds(ISender sender)
     {
+        if (!IsAuthorized())
+        {
+            return Unauthorized();
+        }
+
         var refunds = await sender.Send(new ListRefundsQuery());
         return Ok(refunds);
     }
@@ -71,21 +77,7 @@ public class RefundController : ControllerBase
         return Ok();
     }
 
-    private bool IsAuthorized()
-    {
-        var configuredKey = _configuration["ProductApi:AdminApiKey"];
-        if (string.IsNullOrEmpty(configuredKey))
-        {
-            return false;
-        }
-
-        if (!Request.Headers.TryGetValue("X-Api-Key", out var apiKey))
-        {
-            return false;
-        }
-
-        return apiKey.ToString() == configuredKey;
-    }
+    private bool IsAuthorized() => ApiKeyAuth.IsAuthorized(Request, _configuration);
 }
 
 public record RequestRefundBody(Guid OrderId, string Reason);

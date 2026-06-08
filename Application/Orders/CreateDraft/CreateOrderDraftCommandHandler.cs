@@ -1,3 +1,4 @@
+using Application.Data;
 using Domain.Orders;
 using Domain.Products;
 using MediatR;
@@ -8,13 +9,16 @@ internal sealed class CreateOrderDraftCommandHandler : IRequestHandler<CreateOrd
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IProductRepository _productRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CreateOrderDraftCommandHandler(
         IOrderRepository orderRepository,
-        IProductRepository productRepository)
+        IProductRepository productRepository,
+        IUnitOfWork unitOfWork)
     {
         _orderRepository = orderRepository;
         _productRepository = productRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<Guid> Handle(CreateOrderDraftCommand request, CancellationToken cancellationToken)
@@ -29,6 +33,7 @@ internal sealed class CreateOrderDraftCommandHandler : IRequestHandler<CreateOrd
         order.AddLine(new OrderLine(request.ProductId, request.Quantity, product.Price));
 
         _orderRepository.Add(order);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return order.Id.Value;
     }

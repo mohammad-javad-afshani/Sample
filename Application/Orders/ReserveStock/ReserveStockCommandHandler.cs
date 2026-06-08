@@ -37,7 +37,7 @@ internal sealed class ReserveStockCommandHandler : IRequestHandler<ReserveStockC
                 throw new ProductNotFoundExeption(line.ProductId);
             }
 
-            product.StockQuantity = product.StockQuantity - line.Quantity;
+            product.ReserveStock(line.Quantity);
             _productRepository.Update(product);
         }
 

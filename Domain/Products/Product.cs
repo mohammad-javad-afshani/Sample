@@ -16,8 +16,18 @@ public class Product
 
     public Product(string name, decimal price)
     {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ProductNotValidExeption("Product name is required.");
+        }
+
+        if (price < 0)
+        {
+            throw new ProductNotValidExeption("Product price cannot be negative.");
+        }
+
         Id = new ProductId(Guid.NewGuid());
-        Name = name;
+        Name = name.Trim();
         Price = price;
     }
 
@@ -61,5 +71,21 @@ public class Product
         }
 
         StockQuantity -= quantity;
+    }
+
+    public void AdjustStock(int delta)
+    {
+        if (delta == 0)
+        {
+            return;
+        }
+
+        var newQuantity = StockQuantity + delta;
+        if (newQuantity < 0)
+        {
+            throw new InsufficientStockException(Id, Math.Abs(delta), StockQuantity);
+        }
+
+        StockQuantity = newQuantity;
     }
 }

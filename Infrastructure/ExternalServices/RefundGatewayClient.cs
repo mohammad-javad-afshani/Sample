@@ -21,10 +21,9 @@ internal sealed class RefundGatewayClient : IRefundGatewayClient
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
-            "Submitting refund {RefundId} for order {OrderId} amount {Amount} — customer financial record updated",
+            "Submitting refund {RefundId} for order {OrderId}",
             refundId,
-            orderId,
-            amount);
+            orderId);
 
         await Task.Delay(100, cancellationToken);
         return true;

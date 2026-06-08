@@ -1,5 +1,6 @@
 using Application.Data;
 using Application.Notifications;
+using Application.Payments;
 using Domain.Orders;
 using Domain.Payments;
 using MediatR;
@@ -41,11 +42,22 @@ internal sealed class ProcessPaymentCommandHandler : IRequestHandler<ProcessPaym
             throw new InvalidOperationException("Payment is only allowed after stock has been reserved.");
         }
 
-        var payment = new Payment(order.Id, order.TotalAmount);
+        var existingPayment = await _paymentRepository.FindCompletedByOrderIdAsync(order.Id, cancellationToken);
+        if (existingPayment is not null)
+        {
+            return existingPayment.Id.Value;
+        }
+
+        var payment = new Payment(order.Id, order.PayableAmount);
         _paymentRepository.Add(payment);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var gatewayResult = await _paymentGateway.CreatePaymentAsync(
-            new PaymentRequest(order.Id.Value, order.TotalAmount, "USD"),
+            new PaymentRequest(
+                order.Id.Value,
+                order.PayableAmount,
+                "USD",
+                payment.Id.Value.ToString()),
             cancellationToken);
 
         if (!gatewayResult.Succeeded)
@@ -61,12 +73,11 @@ internal sealed class ProcessPaymentCommandHandler : IRequestHandler<ProcessPaym
 
         _paymentRepository.Update(payment);
         _orderRepository.Update(order);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         await _sender.Send(
             new NotifyPaymentCompletedCommand(order.Id, payment.Id, order.PayableAmount),
             cancellationToken);
-
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return payment.Id.Value;
     }
