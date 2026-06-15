@@ -11,6 +11,9 @@ on:
       - reopened
       - ready_for_review
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: opencode-inline-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -34,7 +37,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install OpenCode CLI
         run: npm install -g opencode-ai@latest
@@ -43,7 +46,7 @@ jobs:
         run: |
           chmod +x .github/scripts/build-review-context.sh
           bash .github/scripts/build-review-context.sh \
-            "${{ github.base_ref }}" \
+            "${{ github.event.pull_request.base.sha }}" \
             "${{ github.event.pull_request.head.sha }}"
 
       - name: Run OpenCode review
