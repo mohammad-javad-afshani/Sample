@@ -159,6 +159,7 @@ Re-run: push a new commit to the PR.
 | Test OpenCode locally | `REVIEW_ENGINE=opencode bash .github/scripts/run-inline-review.sh review.json` |
 | Workflow exits with code **128** | Git could not diff base vs head — fixed by using `pull_request.base.sha` / `head.sha` instead of `origin/master` (base tip may not be fetched when checkout uses head SHA only) |
 | Node.js 20 deprecation warning | Harmless for now; workflow sets `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` and uses Node 24 for OpenCode install |
+| OpenAI **429** / Request too large (TPM) | Context is capped at ~48k chars (~12k tokens). Script retries on 429. Upgrade OpenAI tier or lower `OPENAI_REVIEW_MAX_CHARS`. |
 | Too many comments | Prompt caps at 15; script caps at 50 per review |
 | Wrong model | Set provider in `~/.config/opencode/` or project `opencode.json` |
 
