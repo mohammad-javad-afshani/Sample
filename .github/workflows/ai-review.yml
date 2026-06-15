@@ -1,4 +1,4 @@
-# Automated inline PR review using OpenCode CLI + GitHub Reviews API.
+# Automated inline PR review using OpenAI + GitHub Reviews API.
 # Setup: docs/OPENCODE_AI_REVIEW_SETUP.md
 
 name: AI Code Review (OpenCode Inline)
@@ -34,14 +34,6 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Install OpenCode CLI
-        run: npm install -g opencode-ai@latest
-
       - name: Build numbered diff context
         run: |
           chmod +x .github/scripts/build-review-context.sh
@@ -49,33 +41,15 @@ jobs:
             "${{ github.event.pull_request.base.sha }}" \
             "${{ github.event.pull_request.head.sha }}"
 
-      - name: Run OpenCode review
-        id: opencode
+      - name: Generate review JSON
+        id: review
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_REVIEW_MODEL: gpt-4o
+          REVIEW_ENGINE: openai
         run: |
-          set +e
-          PROMPT="$(cat .github/prompts/inline-review-prompt.md)"
-          opencode run \
-            --format json \
-            --agent review \
-            --model openai/gpt-4o \
-            --dangerously-skip-permissions \
-            --title "PR #${{ github.event.pull_request.number }} inline review" \
-            -f .review-context/diff.patch \
-            -f .review-context/INDEX.md \
-            -f .review-context/valid-lines.json \
-            -f AI_REVIEW.md \
-            -- "$PROMPT" \
-            > opencode-raw.txt 2> opencode-stderr.txt
-          OPENCODE_EXIT=$?
-          set -e
-          python3 .github/scripts/normalize-review-json.py opencode-raw.txt review.json opencode-stderr.txt
-          echo "exit_code=$OPENCODE_EXIT" >> "$GITHUB_OUTPUT"
-          if [ "$OPENCODE_EXIT" != "0" ]; then
-            echo "::warning::OpenCode exited with code $OPENCODE_EXIT (continuing with fallback review.json if needed)"
-          fi
+          chmod +x .github/scripts/run-inline-review.sh
+          bash .github/scripts/run-inline-review.sh review.json "PR #${{ github.event.pull_request.number }} inline review"
 
       - name: Post inline comments on PR
         env:
@@ -98,3 +72,4 @@ jobs:
             .review-context/INDEX.md
             .review-context/valid-lines.json
           retention-days: 14
+          if-no-files-found: ignore

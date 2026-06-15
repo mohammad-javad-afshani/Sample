@@ -29,16 +29,22 @@ PR opened / updated
 build-review-context.sh
   • diff.patch (what changed)
   • numbered changed files (inline line numbers)
-  • context/ + related/ (ApiKeyAuth, siblings, module files)
+  • valid-lines.json (GitHub-attachable lines)
         ↓
-OpenCode CLI — reads diff + explores full repo for patterns
+generate-review-openai.py  ← CI default (reliable)
+  OR opencode run            ← optional (REVIEW_ENGINE=opencode, local)
         ↓
 review.json
         ↓
 post-inline-review.py → inline comments on changed lines only
 ```
 
-**Diff vs context:** OpenCode **anchors** findings on the PR diff but **must read** sibling handlers, auth helpers, domain types, and docs — same idea as Greptile `files.json` / pairwise review in `AI_REVIEW.md`.
+**Why not OpenCode CLI in CI?** `opencode run` in headless Actions is fragile (agent selection, `-f`/`--` parsing, NDJSON extraction). CI uses the **same prompt and context** via OpenAI API directly. Use OpenCode locally for interactive review:
+
+```bash
+bash .github/scripts/build-review-context.sh <base-sha> <head-sha>
+REVIEW_ENGINE=opencode bash .github/scripts/run-inline-review.sh review.json
+```
 
 ---
 
@@ -149,7 +155,8 @@ Re-run: push a new commit to the PR.
 | Comments in summary “could not attach inline” | Path not in PR or line not on RIGHT side of diff — fix prompt or line numbers |
 | `File not found: Follow inline...` | Prompt was parsed as a `-f` attachment — use `--` before the message in `opencode run` |
 | OpenCode fails / no JSON | Verify `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`; read `opencode-raw.txt` + `opencode-stderr.txt` artifacts. Workflow posts a fallback summary if JSON cannot be parsed. |
-| `Could not find JSON object` | Ensure workflow uses `--format json`; upgrade `normalize-review-json.py` (parses NDJSON text events) |
+| `Could not find JSON object` | CI now uses `generate-review-openai.py` by default instead of OpenCode CLI |
+| Test OpenCode locally | `REVIEW_ENGINE=opencode bash .github/scripts/run-inline-review.sh review.json` |
 | Workflow exits with code **128** | Git could not diff base vs head — fixed by using `pull_request.base.sha` / `head.sha` instead of `origin/master` (base tip may not be fetched when checkout uses head SHA only) |
 | Node.js 20 deprecation warning | Harmless for now; workflow sets `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` and uses Node 24 for OpenCode install |
 | Too many comments | Prompt caps at 15; script caps at 50 per review |

@@ -1,4 +1,4 @@
 {
-  "default_agent": "review",
+  "default_agent": "build",
   "model": "openai/gpt-4o"
 }
