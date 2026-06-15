@@ -3,25 +3,48 @@
 Generate review.json for inline PR review by calling OpenAI directly.
 
 CI uses this instead of the OpenCode CLI because opencode run is unreliable in
-headless Actions (agent quirks, -f/-- parsing, NDJSON extraction). Same rules,
-same context files, same review.json schema consumed by post-inline-review.py.
-
-Set REVIEW_ENGINE=opencode to try the CLI first (local debugging only).
+headless Actions. Keeps bundled context small to fit org TPM limits (~30k tokens).
 """
 from __future__ import annotations
 
 import json
 import os
-import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 
-MAX_DIFF_CHARS = 120_000
-MAX_FILE_CHARS = 30_000
-MAX_TOTAL_CHARS = 180_000
+# ~12k tokens user + ~2k system + ~2k output ≈ under 30k TPM tier limits
+MAX_USER_CHARS = int(os.environ.get("OPENAI_REVIEW_MAX_CHARS", "48000"))
+MAX_DIFF_CHARS = 20_000
+MAX_NUMBERED_FILE_CHARS = 6_000
+MAX_REFERENCE_CHARS = 2_500
 MODEL = os.environ.get("OPENAI_REVIEW_MODEL", "gpt-4o")
+RETRY_ATTEMPTS = 3
+RETRY_DELAY_SEC = 30
+
+COMPACT_SYSTEM_PROMPT = """You are an automated code reviewer for a .NET 7 CQRS e-commerce API.
+
+Review ONLY changed files listed in INDEX. Compare against auth/validation patterns in REFERENCE snippets.
+
+Priorities: security → correctness → domain integrity → performance → resilience.
+
+Flag:
+- Missing ApiKeyAuth / X-Api-Key on sensitive endpoints (see ApiKeyAuth.cs + RefundController pattern)
+- Secrets/PII in logs or API responses (connection strings, amounts, tax IDs)
+- Missing FluentValidation on commands; missing SaveChangesAsync after mutations
+- SQL injection, unbounded lists, sync-over-async
+
+Output ONE JSON object only:
+{"summary":"2-4 sentences with risk Low/Medium/High","comments":[{"path":"...","line":N,"side":"RIGHT","severity":"blocker|high|medium|low","body":"..."}]}
+
+Rules:
+- Max 15 comments; high-confidence only
+- path = changed file from INDEX only
+- line MUST be from VALID_LINES for that path
+- side = RIGHT
+- If no issues: {"summary":"No high-confidence issues.","comments":[]}"""
 
 
 def read_text(path: Path, limit: int | None = None) -> str:
@@ -29,91 +52,105 @@ def read_text(path: Path, limit: int | None = None) -> str:
         return ""
     text = path.read_text(encoding="utf-8", errors="replace")
     if limit and len(text) > limit:
-        return text[:limit] + f"\n\n...(truncated, {len(text)} chars total)"
+        return text[:limit] + f"\n...(truncated, {len(text)} chars total)"
     return text
 
 
-def load_optional(repo: Path, rel: str, limit: int | None = None) -> str:
-    return read_text(repo / rel, limit)
+def add_part(parts: list[str], used: list[int], budget: int, header: str, body: str) -> None:
+    body = body.strip()
+    if not body:
+        return
+    block = f"{header}{body}"
+    remaining = budget - used[0]
+    if remaining <= 200:
+        return
+    if len(block) > remaining:
+        block = block[:remaining] + "\n...(truncated for token budget)"
+    parts.append(block)
+    used[0] += len(block)
 
 
 def bundle_context(repo: Path) -> str:
     ctx = repo / ".review-context"
     parts: list[str] = []
+    used = [0]
+    budget = MAX_USER_CHARS
 
-    parts.append("# INDEX\n" + read_text(ctx / "INDEX.md"))
-    parts.append("# VALID_LINES (GitHub inline comment lines — use ONLY these)\n" + read_text(ctx / "valid-lines.json"))
-    parts.append("# DIFF\n" + read_text(ctx / "diff.patch", MAX_DIFF_CHARS))
+    add_part(parts, used, budget, "# INDEX\n", read_text(ctx / "INDEX.md", 4_000))
+    add_part(
+        parts,
+        used,
+        budget,
+        "# VALID_LINES (inline comment lines — use ONLY these)\n",
+        read_text(ctx / "valid-lines.json", 8_000),
+    )
+    add_part(parts, used, budget, "# DIFF\n", read_text(ctx / "diff.patch", MAX_DIFF_CHARS))
 
+    # Changed files with line numbers (highest value for inline comments)
     for numbered in sorted(ctx.glob("*.txt")):
-        parts.append(f"# NUMBERED FILE: {numbered.name}\n" + read_text(numbered, MAX_FILE_CHARS))
+        add_part(
+            parts,
+            used,
+            budget,
+            f"# NUMBERED: {numbered.name}\n",
+            read_text(numbered, MAX_NUMBERED_FILE_CHARS),
+        )
 
-    context_dir = ctx / "context"
-    if context_dir.is_dir():
-        for f in sorted(context_dir.rglob("*")):
-            if f.is_file():
-                parts.append(f"# CONTEXT: {f.relative_to(context_dir)}\n" + read_text(f, MAX_FILE_CHARS))
-
-    related_dir = ctx / "related"
-    if related_dir.is_dir():
-        for f in sorted(related_dir.rglob("*.txt")):
-            parts.append(f"# RELATED: {f.name}\n" + read_text(f, MAX_FILE_CHARS))
-
-    # Auth comparison targets (often cited in smoke-test PR)
+    # Small auth comparison snippets only (not full duplicate context bundle)
     for extra in (
         "WebApplication1/ApiKeyAuth.cs",
         "WebApplication1/Controllers/RefundController.cs",
-        "AI_REVIEW.md",
-        "AGENTS.md",
-        "docs/REVIEW_PROJECT_CONTEXT.md",
     ):
-        text = load_optional(repo, extra, MAX_FILE_CHARS)
+        text = read_text(repo / extra, MAX_REFERENCE_CHARS)
         if text:
-            parts.append(f"# REFERENCE: {extra}\n{text}")
+            add_part(parts, used, budget, f"# REFERENCE: {extra}\n", text)
 
-    bundled = "\n\n---\n\n".join(p for p in parts if p.strip())
-    if len(bundled) > MAX_TOTAL_CHARS:
-        bundled = bundled[:MAX_TOTAL_CHARS] + "\n\n...(context truncated)"
-    return bundled
-
-
-def system_prompt() -> str:
-    return read_text(Path(".github/prompts/inline-review-prompt.md")) or (
-        "You are a code reviewer. Output JSON with summary and comments array only."
-    )
+    return "\n\n---\n\n".join(parts)
 
 
 def call_openai(api_key: str, system: str, user: str) -> dict:
     payload = {
         "model": MODEL,
         "temperature": 0.2,
+        "max_tokens": 4096,
         "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
     }
-    req = urllib.request.Request(
-        "https://api.openai.com/v1/chat/completions",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=180) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        err = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"OpenAI API failed ({e.code}): {err}") from e
+    data = json.dumps(payload).encode("utf-8")
+    last_error: Exception | None = None
 
-    content = body["choices"][0]["message"]["content"]
-    data = json.loads(content)
-    if not isinstance(data, dict):
-        raise RuntimeError("OpenAI response was not a JSON object")
-    return data
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=data,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+            content = body["choices"][0]["message"]["content"]
+            parsed = json.loads(content)
+            if not isinstance(parsed, dict):
+                raise RuntimeError("OpenAI response was not a JSON object")
+            return parsed
+        except urllib.error.HTTPError as e:
+            err = e.read().decode("utf-8", errors="replace")
+            last_error = RuntimeError(f"OpenAI API failed ({e.code}): {err}")
+            if e.code == 429 and attempt < RETRY_ATTEMPTS:
+                wait = RETRY_DELAY_SEC * attempt
+                print(f"Rate limited (429), retry {attempt}/{RETRY_ATTEMPTS} in {wait}s...", file=sys.stderr)
+                time.sleep(wait)
+                continue
+            raise last_error from e
+
+    raise last_error or RuntimeError("OpenAI API call failed")
 
 
 def validate_review(data: dict, repo: Path) -> dict:
@@ -122,8 +159,8 @@ def validate_review(data: dict, repo: Path) -> dict:
     if not isinstance(data.get("comments"), list):
         data["comments"] = []
 
-    valid_lines_path = repo / ".review-context" / "valid-lines.json"
     valid_lines: dict[str, list[int]] = {}
+    valid_lines_path = repo / ".review-context" / "valid-lines.json"
     if valid_lines_path.exists():
         try:
             valid_lines = json.loads(valid_lines_path.read_text(encoding="utf-8"))
@@ -170,16 +207,21 @@ def main() -> int:
         raise SystemExit("ERROR: .review-context is empty — run build-review-context.sh first")
 
     user_message = (
-        "Review the pull request using the bundled context below.\n"
-        "Return ONE JSON object with keys `summary` (string) and `comments` (array).\n"
-        "Each comment needs: path, line, side (RIGHT), severity, body.\n"
-        "Use line numbers from NUMBERED FILE sections; they must appear in VALID_LINES.\n"
-        "Focus on changed files in INDEX. Max 15 comments.\n\n"
-        + bundled
+        "Review this PR. Return JSON with summary and comments only.\n\n" + bundled
+    )
+    system = COMPACT_SYSTEM_PROMPT
+    total_chars = len(system) + len(user_message)
+    est_tokens = total_chars // 4
+    print(
+        f"Calling OpenAI ({MODEL}): system={len(system)} + user={len(user_message)} "
+        f"chars (~{est_tokens} tokens est.)",
+        file=sys.stderr,
     )
 
-    print(f"Calling OpenAI ({MODEL}) with {len(user_message)} chars of context...", file=sys.stderr)
-    data = call_openai(api_key, system_prompt(), user_message)
+    if est_tokens > 28_000:
+        print("WARNING: estimated tokens near limit; consider raising OPENAI tier or lowering OPENAI_REVIEW_MAX_CHARS", file=sys.stderr)
+
+    data = call_openai(api_key, system, user_message)
     data = validate_review(data, repo)
     out.write_text(json.dumps(data, indent=2), encoding="utf-8")
     print(f"Wrote {out} with {len(data['comments'])} comment(s)")
