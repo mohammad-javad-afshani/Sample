@@ -82,4 +82,5 @@ jobs:
             opencode-raw.txt
             .review-context/diff.patch
             .review-context/INDEX.md
+            .review-context/valid-lines.json
           retention-days: 14

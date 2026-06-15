@@ -73,4 +73,5 @@ for f in "${FILES[@]}"; do
 done
 
 git diff "origin/${BASE_REF}...${HEAD_SHA}" > "$OUT_DIR/diff.patch"
+python3 .github/scripts/build-valid-lines-from-patch.py "$OUT_DIR/diff.patch" "$OUT_DIR/valid-lines.json"
 echo "Context built: ${#FILES[@]} changed file(s), ${#CONTEXT_FILES[@]} fixed context file(s)"
