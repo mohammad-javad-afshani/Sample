@@ -167,7 +167,12 @@ def fallback_review(raw: str, stderr: str, reason: str) -> dict:
         snippet += "\n...(truncated)"
 
     hint = ""
-    if "plan" in snippet.lower() or "### plan" in snippet.lower():
+    if "file not found:" in snippet.lower():
+        hint = (
+            "\n\n**Hint:** OpenCode treated the prompt as a `-f` file attachment. "
+            "Use `--` before the message in `opencode run` (fixed in ai-review.yml)."
+        )
+    elif "plan" in snippet.lower() or "### plan" in snippet.lower():
         hint = (
             "\n\n**Hint:** OpenCode used the `plan` agent and emitted a plan instead of review JSON. "
             "The workflow should use `--agent review`."

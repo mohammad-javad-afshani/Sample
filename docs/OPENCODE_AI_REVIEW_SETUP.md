@@ -147,6 +147,7 @@ Re-run: push a new commit to the PR.
 |---------|-----|
 | No inline comments, only summary | Check `review.json` artifact — empty `comments` or wrong `line` numbers |
 | Comments in summary “could not attach inline” | Path not in PR or line not on RIGHT side of diff — fix prompt or line numbers |
+| `File not found: Follow inline...` | Prompt was parsed as a `-f` attachment — use `--` before the message in `opencode run` |
 | OpenCode fails / no JSON | Verify `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`; read `opencode-raw.txt` + `opencode-stderr.txt` artifacts. Workflow posts a fallback summary if JSON cannot be parsed. |
 | `Could not find JSON object` | Ensure workflow uses `--format json`; upgrade `normalize-review-json.py` (parses NDJSON text events) |
 | Workflow exits with code **128** | Git could not diff base vs head — fixed by using `pull_request.base.sha` / `head.sha` instead of `origin/master` (base tip may not be fetched when checkout uses head SHA only) |
