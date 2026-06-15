@@ -24,6 +24,12 @@ internal sealed class GetHealthStatusQueryHandler : IRequestHandler<GetHealthSta
             Environment.MachineName,
             connectionString);
 
+        
+        var responses = new HealthStatusResponse(
+            _environment.EnvironmentName,
+            Environment.MachineName,
+            connectionString);
+        
         return Task.FromResult(response);
     }
 }
