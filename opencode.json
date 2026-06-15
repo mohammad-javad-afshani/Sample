@@ -1,0 +1,4 @@
+{
+  "default_agent": "plan",
+  "model": "openai/gpt-4o"
+}
