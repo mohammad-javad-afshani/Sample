@@ -56,14 +56,19 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           set +e
-          PROMPT="$(cat .github/prompts/inline-review-prompt.md)"
           opencode run \
             --format json \
-            --agent plan \
+            --agent review \
             --model openai/gpt-4o \
             --dangerously-skip-permissions \
             --title "PR #${{ github.event.pull_request.number }} inline review" \
-            "$PROMPT" > opencode-raw.txt 2> opencode-stderr.txt
+            -f .github/prompts/inline-review-prompt.md \
+            -f .review-context/diff.patch \
+            -f .review-context/INDEX.md \
+            -f .review-context/valid-lines.json \
+            -f AI_REVIEW.md \
+            "Follow inline-review-prompt.md exactly. Read changed files under .review-context/, compare with context files, then output ONLY the final review JSON object (summary + comments). No plan text." \
+            > opencode-raw.txt 2> opencode-stderr.txt
           OPENCODE_EXIT=$?
           set -e
           python3 .github/scripts/normalize-review-json.py opencode-raw.txt review.json opencode-stderr.txt

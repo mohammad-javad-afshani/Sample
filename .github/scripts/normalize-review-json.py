@@ -2,8 +2,7 @@
 """Extract review.json from OpenCode CLI output.
 
 OpenCode `run --format json` writes NDJSON events (type=text, tool_use, ...).
-Default format writes formatted prose/tool logs. This script accepts either form,
-concatenates assistant text, then extracts the review JSON object.
+The final assistant text should contain {"summary": ..., "comments": [...]}.
 """
 from __future__ import annotations
 
@@ -13,8 +12,25 @@ import sys
 from pathlib import Path
 
 
-def parse_ndjson_text(raw: str) -> str:
-    """Collect assistant text chunks from OpenCode --format json output."""
+def is_ndjson_stream(raw: str) -> bool:
+    typed_lines = 0
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(event, dict) and "type" in event:
+            typed_lines += 1
+            if typed_lines >= 2:
+                return True
+    return False
+
+
+def parse_ndjson_text_events(raw: str) -> list[str]:
+    """Return each assistant text chunk from OpenCode --format json output."""
     chunks: list[str] = []
     for line in raw.splitlines():
         line = line.strip()
@@ -32,7 +48,6 @@ def parse_ndjson_text(raw: str) -> str:
             chunks.append(part["text"])
             continue
 
-        # Some OpenCode builds nest assistant content differently.
         if event_type == "message" and isinstance(event.get("content"), str):
             chunks.append(event["content"])
             continue
@@ -51,8 +66,11 @@ def parse_ndjson_text(raw: str) -> str:
                             text = block.get("text")
                             if text:
                                 chunks.append(text)
+    return chunks
 
-    return "".join(chunks)
+
+def looks_like_review(obj: dict) -> bool:
+    return isinstance(obj, dict) and "summary" in obj and "comments" in obj
 
 
 def extract_json_object(text: str) -> dict:
@@ -71,12 +89,47 @@ def extract_json_object(text: str) -> dict:
     if fenced:
         return json.loads(fenced.group(1))
 
-    start = text.find("{")
-    end = text.rfind("}")
-    if start >= 0 and end > start:
-        return json.loads(text[start : end + 1])
+    # Prefer objects that look like our review schema.
+    for match in re.finditer(r"\{", text):
+        start = match.start()
+        end = text.rfind("}", start)
+        while end > start:
+            candidate = text[start : end + 1]
+            try:
+                parsed = json.loads(candidate)
+            except json.JSONDecodeError:
+                end = text.rfind("}", start, end)
+                continue
+            if isinstance(parsed, dict):
+                return parsed
+            break
 
     raise ValueError("Could not find JSON object in OpenCode output")
+
+
+def find_review_json(texts: list[str]) -> dict:
+    # Final assistant messages usually contain the deliverable.
+    for text in reversed(texts):
+        try:
+            candidate = extract_json_object(text)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if looks_like_review(candidate):
+            return candidate
+
+    for text in reversed(texts):
+        try:
+            candidate = extract_json_object(text)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if isinstance(candidate, dict):
+            return candidate
+
+    combined = "\n".join(texts)
+    candidate = extract_json_object(combined)
+    if isinstance(candidate, dict):
+        return candidate
+    raise ValueError("Could not find review JSON in OpenCode text events")
 
 
 def extract(raw: str, stderr: str = "") -> dict:
@@ -87,23 +140,23 @@ def extract(raw: str, stderr: str = "") -> dict:
     if not raw:
         raise ValueError("OpenCode produced no output")
 
-    # 1) Plain JSON file (already normalized)
-    try:
-        parsed = json.loads(raw)
-        if isinstance(parsed, dict):
-            return parsed
-    except json.JSONDecodeError:
-        pass
-
-    # 2) NDJSON event stream from `opencode run --format json`
-    ndjson_text = parse_ndjson_text(raw)
-    if ndjson_text.strip():
+    # Plain review.json already
+    if not is_ndjson_stream(raw):
         try:
-            return extract_json_object(ndjson_text)
-        except (json.JSONDecodeError, ValueError):
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict) and looks_like_review(parsed):
+                return parsed
+        except json.JSONDecodeError:
             pass
 
-    # 3) Default formatted CLI output (prose + optional JSON body)
+    # NDJSON stream from `opencode run --format json`
+    if is_ndjson_stream(raw):
+        texts = parse_ndjson_text_events(raw)
+        if texts:
+            return find_review_json(texts)
+        raise ValueError("OpenCode NDJSON stream contained no text events")
+
+    # Default formatted CLI output (prose + optional JSON body)
     return extract_json_object(raw)
 
 
@@ -113,10 +166,17 @@ def fallback_review(raw: str, stderr: str, reason: str) -> dict:
     if len(combined) > 4000:
         snippet += "\n...(truncated)"
 
+    hint = ""
+    if "plan" in snippet.lower() or "### plan" in snippet.lower():
+        hint = (
+            "\n\n**Hint:** OpenCode used the `plan` agent and emitted a plan instead of review JSON. "
+            "The workflow should use `--agent review`."
+        )
+
     return {
         "summary": (
             "OpenCode did not produce parseable review JSON.\n\n"
-            f"**Reason:** {reason}\n\n"
+            f"**Reason:** {reason}{hint}\n\n"
             "Check the `opencode-raw.txt` workflow artifact for full CLI output.\n\n"
             f"**Output preview:**\n```\n{snippet}\n```"
         ),
