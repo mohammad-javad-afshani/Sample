@@ -54,14 +54,19 @@ jobs:
         run: |
           set +e
           PROMPT="$(cat .github/prompts/inline-review-prompt.md)"
-          opencode run --title "PR #${{ github.event.pull_request.number }} inline review" "$PROMPT" \
-            > opencode-raw.txt 2>&1
+          opencode run \
+            --format json \
+            --agent plan \
+            --model openai/gpt-4o \
+            --dangerously-skip-permissions \
+            --title "PR #${{ github.event.pull_request.number }} inline review" \
+            "$PROMPT" > opencode-raw.txt 2> opencode-stderr.txt
           OPENCODE_EXIT=$?
           set -e
-          python3 .github/scripts/normalize-review-json.py opencode-raw.txt review.json
+          python3 .github/scripts/normalize-review-json.py opencode-raw.txt review.json opencode-stderr.txt
           echo "exit_code=$OPENCODE_EXIT" >> "$GITHUB_OUTPUT"
           if [ "$OPENCODE_EXIT" != "0" ]; then
-            echo "::warning::OpenCode exited with code $OPENCODE_EXIT (continuing if review.json exists)"
+            echo "::warning::OpenCode exited with code $OPENCODE_EXIT (continuing with fallback review.json if needed)"
           fi
 
       - name: Post inline comments on PR
@@ -80,6 +85,7 @@ jobs:
           path: |
             review.json
             opencode-raw.txt
+            opencode-stderr.txt
             .review-context/diff.patch
             .review-context/INDEX.md
             .review-context/valid-lines.json

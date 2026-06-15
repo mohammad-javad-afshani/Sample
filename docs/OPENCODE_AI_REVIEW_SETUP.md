@@ -81,8 +81,10 @@ Script: `.github/scripts/build-review-context.sh`
 
 ### 3.3 Run OpenCode
 
+- CLI: `opencode run --format json --agent plan --dangerously-skip-permissions`
 - Reads [`.github/prompts/inline-review-prompt.md`](../.github/prompts/inline-review-prompt.md)
-- Must produce JSON:
+- OpenCode emits **NDJSON events** on stdout; `normalize-review-json.py` collects `type=text` chunks and extracts the review JSON
+- Model output schema:
 
 ```json
 {
@@ -145,7 +147,8 @@ Re-run: push a new commit to the PR.
 |---------|-----|
 | No inline comments, only summary | Check `review.json` artifact — empty `comments` or wrong `line` numbers |
 | Comments in summary “could not attach inline” | Path not in PR or line not on RIGHT side of diff — fix prompt or line numbers |
-| OpenCode fails | Verify API secret; read `opencode-raw.txt` artifact |
+| OpenCode fails / no JSON | Verify `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`; read `opencode-raw.txt` + `opencode-stderr.txt` artifacts. Workflow posts a fallback summary if JSON cannot be parsed. |
+| `Could not find JSON object` | Ensure workflow uses `--format json`; upgrade `normalize-review-json.py` (parses NDJSON text events) |
 | Workflow not running | Merge workflow to **default branch**; enable Actions |
 | Too many comments | Prompt caps at 15; script caps at 50 per review |
 | Wrong model | Set provider in `~/.config/opencode/` or project `opencode.json` |
