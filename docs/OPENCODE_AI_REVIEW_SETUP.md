@@ -107,6 +107,7 @@ Script: `.github/scripts/post-inline-review.py`
 - `body` = summary markdown
 - `comments[]` = inline threads on diff lines
 - Invalid paths/lines are listed in the summary footer (not lost)
+- Lines are validated against each file's PR diff hunks; out-of-diff lines snap to the nearest valid line (within 20 lines) or move to the summary footer
 
 ---
 
