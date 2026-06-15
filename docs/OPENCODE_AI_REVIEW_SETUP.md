@@ -149,7 +149,8 @@ Re-run: push a new commit to the PR.
 | Comments in summary “could not attach inline” | Path not in PR or line not on RIGHT side of diff — fix prompt or line numbers |
 | OpenCode fails / no JSON | Verify `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`; read `opencode-raw.txt` + `opencode-stderr.txt` artifacts. Workflow posts a fallback summary if JSON cannot be parsed. |
 | `Could not find JSON object` | Ensure workflow uses `--format json`; upgrade `normalize-review-json.py` (parses NDJSON text events) |
-| Workflow not running | Merge workflow to **default branch**; enable Actions |
+| Workflow exits with code **128** | Git could not diff base vs head — fixed by using `pull_request.base.sha` / `head.sha` instead of `origin/master` (base tip may not be fetched when checkout uses head SHA only) |
+| Node.js 20 deprecation warning | Harmless for now; workflow sets `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` and uses Node 24 for OpenCode install |
 | Too many comments | Prompt caps at 15; script caps at 50 per review |
 | Wrong model | Set provider in `~/.config/opencode/` or project `opencode.json` |
 
