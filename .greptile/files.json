@@ -1,0 +1,22 @@
+{
+  "files": [
+    {
+      "path": "docs/REVIEW_PROJECT_CONTEXT.md",
+      "description": "Architecture, layers, auth, persistence, and review priorities for this repo"
+    },
+    {
+      "path": "docs/COMMERCE_MODULE.md",
+      "description": "Commerce/checkout module overview",
+      "scope": ["Application/Orders/**", "Application/Payments/**", "WebApplication1/Controllers/CommerceController.cs"]
+    },
+    {
+      "path": "AGENTS.md",
+      "description": "Agent and reviewer checklist summary"
+    },
+    {
+      "path": "WebApplication1/ApiKeyAuth.cs",
+      "description": "API key authorization pattern — compare controllers against this",
+      "scope": ["WebApplication1/Controllers/**"]
+    }
+  ]
+}

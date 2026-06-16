@@ -6,7 +6,7 @@ using Domain.Payments;
 using Domain.Products;
 using Domain.Promotions;
 using Domain.Refunds;
-using Domain.Reviews;
+using Domain.Vendors;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -30,6 +30,7 @@ namespace Persistence
         public DbSet<Payment> Payments { get; set; }
         public DbSet<Coupon> Coupons { get; set; }
         public DbSet<Refund> Refunds { get; set; }
+        public DbSet<Vendor> Vendors { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
